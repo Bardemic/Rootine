@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import styles from './UploadForm.module.css'
 import { useAppState } from '../../AppStateProvider/AppStateProvider'
 
@@ -7,6 +8,10 @@ export function UploadForm() {
   const [goalId, setGoalId] = useState('')
   const [preview, setPreview] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
+  const [description, setDescription] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (!goalId && goals.length > 0) {
@@ -27,9 +32,26 @@ export function UploadForm() {
 
   const handleSubmit = async () => {
     if (!canSubmit || !file || !preview) return
-    addProof(goalId, preview)
+    setSubmitting(true)
+    setError(null)
+    try {
+      await addProof(goalId, preview, description.trim() || undefined)
+      setPreview(null)
+      setFile(null)
+      setDescription('')
+      navigate({ to: '/' })
+    } catch (e: any) {
+      const msg = e?.message || e?.data?.message || 'Upload failed. Please try again.'
+      setError(msg)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const clearImage = () => {
     setPreview(null)
     setFile(null)
+    setError(null)
   }
 
   return (
@@ -43,7 +65,10 @@ export function UploadForm() {
         </select>
 
         {preview ? (
-          <img src={preview} alt="preview" className={styles.preview} />
+          <div className={styles.previewWrap}>
+            <img src={preview} alt="preview" className={styles.preview} />
+            <button type="button" aria-label="Clear image" className={styles.clearBtn} onClick={clearImage}>×</button>
+          </div>
         ) : (
           <label className={styles.uploader}>
             <input type="file" accept="image/*" capture="environment" onChange={handleSelect} />
@@ -51,7 +76,19 @@ export function UploadForm() {
           </label>
         )}
 
-        <button className={styles.submit} disabled={!canSubmit} onClick={handleSubmit}>Submit</button>
+        <textarea
+          className={styles.textarea}
+          placeholder="Optional: Add a short description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+        />
+
+        {error && <div className={styles.error}>{String(error)}</div>}
+
+        <button className={styles.submit} disabled={!canSubmit || submitting} onClick={handleSubmit}>
+          {submitting ? 'Submitting…' : 'Submit'}
+        </button>
       </div>
     </div>
   )

@@ -14,6 +14,7 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { pool } from './db';
 import { Readable } from 'stream';
+import { verifyImageWithAI } from './utils/aiVerify';
 
 dotenv.config();
 
@@ -95,32 +96,18 @@ app.post('/api/upload/proof', async (req, res) => {
 
     const bb = Busboy({ headers: req.headers as any });
     let goalId: string | null = null;
-    let uploadPromise: Promise<{ key: string }> | null = null;
     let contentType: string | undefined;
+    const chunks: Buffer[] = [];
 
     bb.on('field', (name: string, val: string) => {
       if (name === 'goalId') goalId = val;
+      // optional description for verification context
+      if (name === 'description') (req as any)._description = val;
     });
 
     bb.on('file', (_name: string, file: NodeJS.ReadableStream, info: { filename: string; mimeType: string }) => {
       contentType = info.mimeType || 'application/octet-stream';
-      const ext = contentTypeToExt(contentType);
-      const key = `proofs/${userId}/${goalId ?? 'unknown'}/${Date.now()}.${ext}`;
-      const s3 = getS3Client();
-      const uploader = new Upload({
-        client: s3,
-        params: {
-          Bucket: (process.env.S3_BUCKET || 'rootine') as string,
-          Key: key,
-          Body: file as any,
-          ContentType: contentType,
-          ACL: 'public-read',
-        },
-        queueSize: 4,
-        partSize: 5 * 1024 * 1024,
-        leavePartsOnError: false,
-      });
-      uploadPromise = uploader.done().then(() => ({ key }));
+      (file as any).on('data', (d: Buffer) => chunks.push(d));
     });
 
     bb.on('finish', async () => {
@@ -131,13 +118,36 @@ app.post('/api/upload/proof', async (req, res) => {
         if (userId !== getGoal.rows[0]?.user_id) {
           return res.status(401).json({ error: 'UNAUTHORIZED' });
         }
-        if (!uploadPromise) {
+        if (chunks.length === 0 || !contentType) {
           return res.status(400).json({ error: 'No file uploaded' });
         }
-        const result = await uploadPromise;
-        const publicUrl = buildPublicUrl(result.key);
+
+        const buffer = Buffer.concat(chunks);
+        const base64 = buffer.toString('base64');
+        const dataUrl = `data:${contentType};base64,${base64}`;
+
+        // AI verification before uploading
+        const title: string = String(getGoal.rows?.[0]?.title || '');
+        const description: string | undefined = (req as any)._description;
+        const verification = await verifyImageWithAI({ imageUrl: dataUrl, title, description });
+        if (!verification.ok) {
+          return res.status(400).json({ error: 'Image verification failed. Please submit a clearer, relevant photo.' });
+        }
+
+        const ext = contentTypeToExt(contentType);
+        const key = `proofs/${userId}/${goalId}/${Date.now()}.${ext}`;
+        const s3 = getS3Client();
+        const put = new PutObjectCommand({
+          Bucket: (process.env.S3_BUCKET || 'rootine') as string,
+          Key: key,
+          Body: buffer,
+          ContentType: contentType,
+          ACL: 'public-read',
+        });
+        await s3.send(put);
+        const publicUrl = buildPublicUrl(key);
         await pool.query('INSERT INTO proofs (habit_id, image_data_url) VALUES ($1, $2)', [goalId, publicUrl]);
-        return res.json({ ok: true, url: publicUrl, key: result.key });
+        return res.json({ ok: true, url: publicUrl, key });
       } catch (err: any) {
         console.error('Upload finalize failed', err);
         return res.status(500).json({ error: 'Upload failed' });
@@ -167,32 +177,17 @@ app.post('/api/upload/group-proof', async (req, res) => {
 
     const bb = Busboy({ headers: req.headers as any });
     let groupId: string | null = null;
-    let uploadPromise: Promise<{ key: string }> | null = null;
     let contentType: string | undefined;
+    const chunks: Buffer[] = [];
 
     bb.on('field', (name: string, val: string) => {
       if (name === 'groupId') groupId = val;
+      if (name === 'description') (req as any)._description = val;
     });
 
     bb.on('file', (_name: string, file: NodeJS.ReadableStream, info: { filename: string; mimeType: string }) => {
       contentType = info.mimeType || 'application/octet-stream';
-      const ext = contentTypeToExt(contentType);
-      const key = `group-proofs/${groupId ?? 'unknown'}/${userId}/${Date.now()}.${ext}`;
-      const s3 = getS3Client();
-      const uploader = new Upload({
-        client: s3,
-        params: {
-          Bucket: (process.env.S3_BUCKET || 'rootine') as string,
-          Key: key,
-          Body: file as any,
-          ContentType: contentType,
-          ACL: 'public-read',
-        },
-        queueSize: 4,
-        partSize: 5 * 1024 * 1024,
-        leavePartsOnError: false,
-      });
-      uploadPromise = uploader.done().then(() => ({ key }));
+      (file as any).on('data', (d: Buffer) => chunks.push(d));
     });
 
     bb.on('finish', async () => {
@@ -214,18 +209,43 @@ app.post('/api/upload/group-proof', async (req, res) => {
           return res.status(400).json({ error: 'Daily submission limit reached' });
         }
 
-        if (!uploadPromise) {
+        if (chunks.length === 0 || !contentType) {
           return res.status(400).json({ error: 'No file uploaded' });
         }
-        const result = await uploadPromise;
-        const publicUrl = buildPublicUrl(result.key);
+
+        const buffer = Buffer.concat(chunks);
+        const base64 = buffer.toString('base64');
+        const dataUrl = `data:${contentType};base64,${base64}`;
+
+        // Fetch group for context
+        const gRes = await pool.query('SELECT name, habit_description FROM groups WHERE id = $1', [groupId]);
+        const grp = gRes.rows?.[0];
+
+        const description: string | undefined = (req as any)._description || String(grp?.habit_description || '');
+        const verification = await verifyImageWithAI({ imageUrl: dataUrl, title: String(grp?.name || 'Group Goal'), description });
+        if (!verification.ok) {
+          return res.status(400).json({ error: 'Image verification failed. Please submit a clearer, relevant photo.' });
+        }
+
+        const ext = contentTypeToExt(contentType);
+        const key = `group-proofs/${groupId}/${userId}/${Date.now()}.${ext}`;
+        const s3 = getS3Client();
+        const put = new PutObjectCommand({
+          Bucket: (process.env.S3_BUCKET || 'rootine') as string,
+          Key: key,
+          Body: buffer,
+          ContentType: contentType,
+          ACL: 'public-read',
+        });
+        await s3.send(put);
+        const publicUrl = buildPublicUrl(key);
 
         await pool.query('INSERT INTO group_proofs (group_id, user_id, image_data_url) VALUES ($1, $2, $3)', [groupId, userId, publicUrl]);
 
         // Try award logic
         await awardGroupCoinsIfAllGroupMembersSubmittedToday(groupId);
 
-        return res.json({ ok: true, url: publicUrl, key: result.key });
+        return res.json({ ok: true, url: publicUrl, key });
       } catch (err: any) {
         console.error('Group upload finalize failed', err);
         return res.status(500).json({ error: 'Upload failed' });

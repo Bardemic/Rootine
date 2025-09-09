@@ -12,6 +12,9 @@ function RouteComponent() {
   const utils = trpc.useUtils()
   const [preview, setPreview] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
+  const [description, setDescription] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   const canSubmit = useMemo(() => Boolean(file), [file])
@@ -29,15 +32,28 @@ function RouteComponent() {
 
   const onSubmit = async () => {
     if (!file) return
+    setSubmitting(true)
+    setError(null)
     const fd = new FormData()
     fd.append('groupId', groupId)
     fd.append('file', file)
-    const resp = await fetch('/api/upload/group-proof', { method: 'POST', body: fd, credentials: 'include' })
-    if (resp.ok) {
-      setFile(null)
-      setPreview(null)
-      ;(utils as any).groups?.groupDetail?.invalidate?.({ groupId })
-      ;(utils as any).user?.coin?.invalidate?.()
+    if (description.trim()) fd.append('description', description.trim())
+    try {
+      const resp = await fetch('/api/upload/group-proof', { method: 'POST', body: fd, credentials: 'include' })
+      if (resp.ok) {
+        setFile(null)
+        setPreview(null)
+        setDescription('')
+        ;(utils as any).groups?.groupDetail?.invalidate?.({ groupId })
+        ;(utils as any).user?.coin?.invalidate?.()
+      } else {
+        const data = await resp.json().catch(() => ({}))
+        setError(String(data?.error || 'Upload failed.'))
+      }
+    } catch (e: any) {
+      setError(String(e?.message || 'Upload failed.'))
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -66,13 +82,25 @@ function RouteComponent() {
 
           <div style={{ display: 'grid', gap: 8 }}>
             {preview ? (
-              <img src={preview} alt="preview" style={{ width: '100%', borderRadius: 10, border: '2px solid var(--border-color)' }} />
+              <div style={{ position: 'relative' }}>
+                <img src={preview} alt="preview" style={{ width: '100%', borderRadius: 10, border: '2px solid var(--border-color)' }} />
+                <button type="button" aria-label="Clear image" onClick={() => { setPreview(null); setFile(null); setError(null); }}
+                  style={{ position: 'absolute', top: 8, right: 8, width: 32, height: 32, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', display: 'grid', placeItems: 'center', fontSize: 20, lineHeight: 1 }}>
+                  ×
+                </button>
+              </div>
             ) : null}
             <input ref={inputRef} type="file" accept="image/*" capture="environment" onChange={onPick} style={{ display: 'none' }} />
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => inputRef.current?.click()} style={{ padding: '10px 14px', borderRadius: 10, border: '2px solid var(--border-color)', background: 'white', cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>Choose Photo</button>
-              <button onClick={onSubmit} disabled={!canSubmit} style={{ opacity: canSubmit ? 1 : 0.6, padding: '10px 14px', borderRadius: 10, border: '2px solid var(--primary-color)', background: 'var(--primary-color)', cursor: canSubmit ? 'pointer' : 'not-allowed', color: 'white', fontWeight: 600, fontSize: 14 }}>Submit</button>
+              <button onClick={onSubmit} disabled={!canSubmit || submitting} style={{ opacity: canSubmit && !submitting ? 1 : 0.6, padding: '10px 14px', borderRadius: 10, border: '2px solid var(--primary-color)', background: 'var(--primary-color)', cursor: canSubmit && !submitting ? 'pointer' : 'not-allowed', color: 'white', fontWeight: 600, fontSize: 14 }}>{submitting ? 'Submitting…' : 'Submit'}</button>
             </div>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional: Add a short description" rows={3} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '2px solid var(--border-color)', background: 'var(--panel-bg)', color: 'var(--text-primary)' }} />
+            {error && (
+              <div style={{ padding: '10px 12px', background: 'rgba(220, 38, 38, 0.08)', border: '1px solid rgba(220, 38, 38, 0.35)', color: '#dc2626', borderRadius: 10 }}>
+                {error}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'grid', gap: 8 }}>

@@ -42,10 +42,11 @@ function RouteComponent() {
               padding: 14,
               textAlign: 'center',
               borderRadius: 12,
-              background: 'linear-gradient(90deg, var(--primary-color), #6366f1)',
-              border: '2px solid var(--border-color)',
+              background: 'var(--primary-color)',
+              border: '2px solid var(--primary-color)',
               color: 'white',
-              fontWeight: '500'
+              fontWeight: '600',
+              cursor: 'pointer'
             }}>Submit Proof ➜</div>
           </Link>
 

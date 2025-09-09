@@ -2,6 +2,7 @@ import { router, protectedProcedure } from '../trpc';
 import { z } from 'zod';
 import { pool } from '../db';
 import { TRPCError } from '@trpc/server';
+import { verifyImageWithAI } from '../utils/aiVerify';
 
 function generateGroupCode(): string {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -167,7 +168,7 @@ export const groupsRouter = router({
     }),
 
   submitProof: protectedProcedure
-    .input(z.object({ groupId: z.string(), dataUrl: z.string() }))
+    .input(z.object({ groupId: z.string(), dataUrl: z.string(), description: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
       // Validate membership
       const isMember = await pool.query('SELECT 1 FROM group_members WHERE group_id = $1 AND user_id = $2', [input.groupId, ctx.user.id]);
@@ -189,6 +190,20 @@ export const groupsRouter = router({
       const { contentType, buffer } = parseDataUrl(input.dataUrl);
       const fileExt = contentTypeToExt(contentType || 'image/jpeg');
       const key = `group-proofs/${input.groupId}/${ctx.user.id}/${Date.now()}.${fileExt}`;
+
+      // Fetch group for name/description to use as title context
+      const gRes = await pool.query('SELECT name, habit_description FROM groups WHERE id = $1', [input.groupId]);
+      const grp = gRes.rows?.[0]
+
+      // Run AI verification before persisting
+      const verify = await verifyImageWithAI({
+        imageUrl: input.dataUrl,
+        title: String(grp?.name || 'Group Goal'),
+        description: input.description || String(grp?.habit_description || ''),
+      })
+      if (!verify.ok) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Image verification failed. Please submit a clearer, relevant photo.' })
+      }
 
       // Upload to S3
       const bucket = (process.env.S3_BUCKET || 'rootine') as string;

@@ -5,6 +5,7 @@ import { protectedProcedure, router } from "../trpc";
 import { TRPCError } from "@trpc/server";
 import { createPresignedUploadUrl, getS3Client } from "../utils/storage";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { verifyImageWithAI } from "../utils/aiVerify";
 
 export const proofsRouter = router({
   // Get all proofs for the current user across all habits
@@ -57,7 +58,7 @@ export const proofsRouter = router({
       throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
     }
   }),
-  submitProof: protectedProcedure.input(z.object({ goalId: z.string(), dataUrl: z.string() })).mutation(async ({ ctx, input }) => {
+  submitProof: protectedProcedure.input(z.object({ goalId: z.string(), dataUrl: z.string(), description: z.string().optional() })).mutation(async ({ ctx, input }) => {
     try {
       // Ensure habit belongs to current user
       const getGoal = await pool.query('SELECT * FROM habits WHERE id = $1', [input.goalId]);
@@ -69,6 +70,17 @@ export const proofsRouter = router({
       const { contentType, buffer } = parseDataUrl(input.dataUrl);
       const fileExt = contentTypeToExt(contentType || 'image/jpeg');
       const key = `proofs/${ctx.user.id}/${input.goalId}/${Date.now()}.${fileExt}`;
+
+      // Run AI verification before persisting
+      const goalTitle: string = String(getGoal.rows?.[0]?.title || '')
+      const verify = await verifyImageWithAI({
+        imageUrl: input.dataUrl,
+        title: goalTitle,
+        description: input.description,
+      })
+      if (!verify.ok) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Image verification failed. Please submit a clearer, relevant photo.' })
+      }
 
       // Upload to S3
       const bucket = (process.env.S3_BUCKET || 'rootine') as string;
@@ -94,7 +106,8 @@ export const proofsRouter = router({
       // Group awards are handled via group proofs; nothing to do here
 
       return { url: publicUrl, key, coins };
-    } catch (err) {
+    } catch (err: any) {
+      if (err instanceof TRPCError) throw err
       console.error('submitProof failed', err);
       throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
     }

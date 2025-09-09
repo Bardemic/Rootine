@@ -33,7 +33,7 @@ export type AppStateShape = {
 type AppActions = {
   addGoal: (title: string) => void
   removeGoal: (goalId: string) => void
-  addProof: (goalId: string, imageDataUrl: string) => void
+  addProof: (goalId: string, imageDataUrl: string, description?: string) => Promise<void>
   purchaseFlower: (type: GardenItem['type'], cost: number) => void
   setSignImage: (id: string, imageUrl: string) => void
 }
@@ -89,17 +89,23 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     )
   }, [deleteHabit, utils])
 
-  const addProof = useCallback((goalId: string, imageDataUrl: string) => {
-    ;(submitProof as any).mutate(
-      { goalId, dataUrl: imageDataUrl },
-      {
-        onSuccess: (res: any) => {
-          if (res && typeof res.coins === 'number') setCoinsState(res.coins)
-          ;(utils as any).proofs?.getProofs?.invalidate?.({ goalId })
-          ;(utils as any).user?.coin?.invalidate?.()
+  const addProof = useCallback(async (goalId: string, imageDataUrl: string, description?: string) => {
+    return new Promise<void>((resolve, reject) => {
+      ;(submitProof as any).mutate(
+        { goalId, dataUrl: imageDataUrl, description },
+        {
+          onSuccess: (res: any) => {
+            if (res && typeof res.coins === 'number') setCoinsState(res.coins)
+            ;(utils as any).proofs?.getProofs?.invalidate?.({ goalId })
+            ;(utils as any).user?.coin?.invalidate?.()
+            resolve()
+          },
+          onError: (err: any) => {
+            reject(err)
+          },
         },
-      },
-    )
+      )
+    })
   }, [submitProof, utils])
 
   const purchaseFlower = useCallback((type: GardenItem['type'], _cost: number) => {
