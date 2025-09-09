@@ -5,9 +5,11 @@ const SHOP = [
   { id: 'flower1', label: 'Sakura', cost: 10 },
   { id: 'flower2', label: 'Daisy', cost: 15 },
   { id: 'flower3', label: 'Hibiscus', cost: 20 },
+  { id: 'imageSign', label: 'Image Sign', cost: 25 },
+  { id: 'tallImage', label: 'Tall Image', cost: 40 },
 ]
 
-const EMOJI: Record<string, string> = { flower1: '🌸', flower2: '🌼', flower3: '🌺' }
+const EMOJI: Record<string, string> = { flower1: '🌸', flower2: '🌼', flower3: '🌺', imageSign: '🪧', tallImage: '🖼️' }
 
 export function FlowerShop() {
   const { coins, purchaseFlower } = useAppState()

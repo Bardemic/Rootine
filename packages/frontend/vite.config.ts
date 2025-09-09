@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => ({
     react(),
   ],
   server: {
+    allowedHosts: ['*.localhost', '127.0.0.1', 'f7a159480d3e.ngrok-free.app'],
     port: 7000,
     proxy: {
       '/trpc': {
@@ -19,7 +20,7 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         secure: false,
         configure: (proxy) => {
-          proxy.on('proxyReq', (proxyReq) => {
+          (proxy as any).on('proxyReq', (proxyReq: any) => {
             proxyReq.setHeader('Origin', 'http://localhost:7000')
           })
         }
@@ -29,7 +30,27 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         secure: false,
         configure: (proxy) => {
-          proxy.on('proxyReq', (proxyReq) => {
+          (proxy as any).on('proxyReq', (proxyReq: any) => {
+            proxyReq.setHeader('Origin', 'http://localhost:7000')
+          })
+        }
+      },
+      '/api/upload': {
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:7001',
+        changeOrigin: true,
+        secure: false,
+        configure: (proxy) => {
+          (proxy as any).on('proxyReq', (proxyReq: any) => {
+            proxyReq.setHeader('Origin', 'http://localhost:7000')
+          })
+        }
+      },
+      '/api/proxy-image': {
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:7001',
+        changeOrigin: true,
+        secure: false,
+        configure: (proxy) => {
+          (proxy as any).on('proxyReq', (proxyReq: any) => {
             proxyReq.setHeader('Origin', 'http://localhost:7000')
           })
         }

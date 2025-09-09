@@ -17,8 +17,9 @@ export type Goal = {
 
 export type GardenItem = {
   id: string
-  type: 'flower1' | 'flower2' | 'flower3'
+  type: 'flower1' | 'flower2' | 'flower3' | 'imageSign' | 'tallImage'
   slot: number
+  imageUrl?: string
 }
 
 export type AppStateShape = {
@@ -34,6 +35,7 @@ type AppActions = {
   removeGoal: (goalId: string) => void
   addProof: (goalId: string, imageDataUrl: string) => void
   purchaseFlower: (type: GardenItem['type'], cost: number) => void
+  setSignImage: (id: string, imageUrl: string) => void
 }
 
 type AppStateContextType = AppStateShape & AppActions
@@ -63,6 +65,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   const deleteHabit = trpc.habits.deleteHabit.useMutation();
   const submitProof = trpc.proofs.submitProof.useMutation();
   const purchaseFlowerMutation = trpc.flowers.purchaseFlower.useMutation()
+  const setSignImageMutation = (trpc as any).flowers?.setSignImage?.useMutation?.()
 
   const addGoal = useCallback((title: string) => {
     ;(createHabit as any).mutate(
@@ -93,6 +96,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         onSuccess: (res: any) => {
           if (res && typeof res.coins === 'number') setCoinsState(res.coins)
           ;(utils as any).proofs?.getProofs?.invalidate?.({ goalId })
+          ;(utils as any).user?.coin?.invalidate?.()
         },
       },
     )
@@ -124,13 +128,24 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     )
   }, [purchaseFlowerMutation, flowersQuery.data, utils])
 
+  const setSignImage = useCallback((id: string, imageUrl: string) => {
+    ;(setSignImageMutation as any)?.mutate?.(
+      { id, imageUrl },
+      {
+        onSuccess: () => {
+          ;(utils as any).flowers?.getFlowers?.invalidate?.()
+        },
+      },
+    )
+  }, [setSignImageMutation, utils])
+
   const mappedGoals: Goal[] = (goalsQuery.data as any) || []
   const mappedFlowers: GardenItem[] = ((flowersQuery.data as any[]) || []).map((f: any) => {
     const pos = Array.isArray(f.position) ? f.position : [0, 0]
     const x = Number(pos[0]) || 0
     const y = Number(pos[1]) || 0
     const slot = y * 8 + x
-    return { id: String(f.id ?? `${x}-${y}`), type: String(f.type ?? 'flower1') as any, slot }
+    return { id: String(f.id ?? `${x}-${y}`), type: String(f.type ?? 'flower1') as any, slot, imageUrl: f.image || undefined }
   })
   const coins: number = (coinsQuery as any)?.data ?? coinsState
 
@@ -142,7 +157,8 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     removeGoal,
     addProof,
     purchaseFlower,
-  }), [mappedGoals, coins, mappedFlowers, addGoal, removeGoal, addProof, purchaseFlower])
+    setSignImage,
+  }), [mappedGoals, coins, mappedFlowers, addGoal, removeGoal, addProof, purchaseFlower, setSignImage])
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>
 }

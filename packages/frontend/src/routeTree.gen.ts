@@ -12,9 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadRouteImport } from './routes/upload'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as GroupRouteImport } from './routes/group'
 import { Route as GardenRouteImport } from './routes/garden'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as GroupGroupIdRouteImport } from './routes/group/$groupId'
 
 const UploadRoute = UploadRouteImport.update({
   id: '/upload',
@@ -29,6 +31,11 @@ const SignupRoute = SignupRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GroupRoute = GroupRouteImport.update({
+  id: '/group',
+  path: '/group',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GardenRoute = GardenRouteImport.update({
@@ -46,51 +53,81 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GroupGroupIdRoute = GroupGroupIdRouteImport.update({
+  id: '/$groupId',
+  path: '/$groupId',
+  getParentRoute: () => GroupRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/garden': typeof GardenRoute
+  '/group': typeof GroupRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/upload': typeof UploadRoute
+  '/group/$groupId': typeof GroupGroupIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/garden': typeof GardenRoute
+  '/group': typeof GroupRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/upload': typeof UploadRoute
+  '/group/$groupId': typeof GroupGroupIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/garden': typeof GardenRoute
+  '/group': typeof GroupRouteWithChildren
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/upload': typeof UploadRoute
+  '/group/$groupId': typeof GroupGroupIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/account' | '/garden' | '/login' | '/signup' | '/upload'
+  fullPaths:
+    | '/'
+    | '/account'
+    | '/garden'
+    | '/group'
+    | '/login'
+    | '/signup'
+    | '/upload'
+    | '/group/$groupId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/account' | '/garden' | '/login' | '/signup' | '/upload'
+  to:
+    | '/'
+    | '/account'
+    | '/garden'
+    | '/group'
+    | '/login'
+    | '/signup'
+    | '/upload'
+    | '/group/$groupId'
   id:
     | '__root__'
     | '/'
     | '/account'
     | '/garden'
+    | '/group'
     | '/login'
     | '/signup'
     | '/upload'
+    | '/group/$groupId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
   GardenRoute: typeof GardenRoute
+  GroupRoute: typeof GroupRouteWithChildren
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
   UploadRoute: typeof UploadRoute
@@ -119,6 +156,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/group': {
+      id: '/group'
+      path: '/group'
+      fullPath: '/group'
+      preLoaderRoute: typeof GroupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/garden': {
       id: '/garden'
       path: '/garden'
@@ -140,13 +184,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/group/$groupId': {
+      id: '/group/$groupId'
+      path: '/$groupId'
+      fullPath: '/group/$groupId'
+      preLoaderRoute: typeof GroupGroupIdRouteImport
+      parentRoute: typeof GroupRoute
+    }
   }
 }
+
+interface GroupRouteChildren {
+  GroupGroupIdRoute: typeof GroupGroupIdRoute
+}
+
+const GroupRouteChildren: GroupRouteChildren = {
+  GroupGroupIdRoute: GroupGroupIdRoute,
+}
+
+const GroupRouteWithChildren = GroupRoute._addFileChildren(GroupRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
   GardenRoute: GardenRoute,
+  GroupRoute: GroupRouteWithChildren,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
   UploadRoute: UploadRoute,

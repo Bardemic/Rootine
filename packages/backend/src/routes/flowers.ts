@@ -15,6 +15,8 @@ export const flowersRouter = router({
       flower1: 10,
       flower2: 15,
       flower3: 20,
+      imageSign: 25,
+      tallImage: 40,
     };
     const price = PRICE_MAP[input.flowerId];
     if (price == null) {
@@ -35,9 +37,11 @@ export const flowersRouter = router({
       }
 
       await client.query('UPDATE auth.user SET coin = coin - $2 WHERE id = $1', [userId, price]);
+      // Default image for imageSign purchases
+      const defaultImage = (input.flowerId === 'imageSign' || input.flowerId === 'tallImage') ? 'https://placehold.co/256x256' : null;
       const insertRes = await client.query(
         'INSERT INTO flowers (user_id, name, image, type, position) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-        [userId, input.flowerId, null, input.flowerId, input.position],
+        [userId, input.flowerId, defaultImage, input.flowerId, input.position],
       );
       await client.query('COMMIT');
       return insertRes.rows as Flowers[];
@@ -48,6 +52,27 @@ export const flowersRouter = router({
     } finally {
       client.release();
     }
+  }),
+  // Update image for an existing image sign owned by the user
+  setSignImage: protectedProcedure.input(z.object({
+    id: z.string(),
+    imageUrl: z.string().url(),
+  })).mutation(async ({ ctx, input }) => {
+    const userId = ctx.user.id as string;
+    // Ensure the flower exists, is owned by the user, and is an imageSign
+    const existing = await pool.query('SELECT id, user_id, type FROM flowers WHERE id = $1', [input.id]);
+    const row = existing.rows[0] as any;
+    if (!row) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Sign not found' });
+    }
+    if (row.user_id !== userId) {
+      throw new TRPCError({ code: 'UNAUTHORIZED' });
+    }
+    if (String(row.type) !== 'imageSign' && String(row.type) !== 'tallImage') {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Item is not an image sign' });
+    }
+    const updated = await pool.query('UPDATE flowers SET image = $1, updated_at = now() WHERE id = $2 RETURNING *', [input.imageUrl, input.id]);
+    return updated.rows as Flowers[];
   }),
   getFlowers: protectedProcedure.query(async ({ ctx }) => {
     const flowers = await pool.query('SELECT * FROM flowers WHERE user_id = $1', [ctx.user.id]);

@@ -11,6 +11,10 @@ export function BottomNav() {
         <span className={styles.icon}>🏡</span>
         <span className={styles.label}>Home</span>
       </Link>
+      <Link to="/group" className={`${styles.item} ${current === '/group' ? styles.active : ''}`}>
+        <span className={styles.icon}>👥</span>
+        <span className={styles.label}>Group</span>
+      </Link>
       <Link to="/upload" className={`${styles.item} ${current === '/upload' ? styles.active : ''}`}>
         <span className={`${styles.centerButton}`}>＋</span>
       </Link>

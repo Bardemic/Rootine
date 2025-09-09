@@ -3,12 +3,12 @@
   left: 50%;
   transform: translateX(-50%);
   bottom: 84px; /* above BottomNav */
-  width: min(560px, calc(100% - 24px));
+  width: clamp(280px, 92vw, 560px);
   border-radius: 16px;
   border: 1px solid var(--border-color);
-  background: var(--glass);
+  background: var(--panel-bg);
   backdrop-filter: blur(10px);
-  box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+  box-shadow: 0 8px 18px var(--shadow-color);
   overflow: hidden;
   transition: height 200ms ease, box-shadow 200ms ease;
   height: 52px;
@@ -30,6 +30,9 @@
 
 .content {
   padding: 12px;
+  max-height: calc(100% - 52px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 

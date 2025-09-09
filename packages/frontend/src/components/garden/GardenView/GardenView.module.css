@@ -15,7 +15,8 @@
   place-items: center;
   border-radius: 14px;
   border: 1px solid var(--border-color);
-  background: linear-gradient(180deg, #F0FDF4, #DCFCE7);
+  background: #FBF8F3;
+  box-shadow: inset 0 -6px 10px rgba(107,79,59,0.06);
 }
 
 .flower { font-size: 26px; }

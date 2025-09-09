@@ -1,0 +1,94 @@
+.wrap {
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.title {
+  font-size: 16px;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.actionBtn, .actionBtnSecondary {
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.actionBtn { background: var(--primary-color); color: #fff; border: 2px solid var(--primary-color); }
+.actionBtnSecondary { background: var(--panel-bg); color: var(--text-primary); border: 2px solid var(--border-color); }
+
+.panel {
+  display: grid;
+  gap: 8px;
+  background: var(--panel-bg);
+  border: 2px solid var(--border-color);
+  padding: 12px;
+  border-radius: 12px;
+  box-shadow: 0 6px 14px var(--shadow-color);
+}
+
+/* Subtle picket fence motif: repeating vertical slats */
+.fencePanel {
+  position: relative;
+}
+.fencePanel::before {
+  content: '';
+  position: absolute;
+  inset: -2px -2px auto -2px;
+  height: 12px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--border-color) 0,
+    var(--border-color) 2px,
+    transparent 2px,
+    transparent 10px
+  );
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+.fencePanel::after {
+  content: '';
+  position: absolute;
+  inset: auto -2px -2px -2px;
+  height: 10px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--border-color) 0,
+    var(--border-color) 2px,
+    transparent 2px,
+    transparent 10px
+  );
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.groupCard {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px solid var(--border-color);
+  background: var(--panel-bg);
+}
+
+.actionRow { display: grid; }
+
+.openBtn {
+  padding: 12px;
+  border-radius: 10px;
+  border: 2px solid var(--border-color);
+  background: #fff;
+  color: var(--text-primary);
+  text-align: center;
+  font-weight: 700;
+}
+
+

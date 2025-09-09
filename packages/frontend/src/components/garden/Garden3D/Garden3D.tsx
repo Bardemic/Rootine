@@ -7,10 +7,10 @@ import styles from './Garden3D.module.css'
 import { useAppState } from '../../AppStateProvider/AppStateProvider'
 import { trpc } from '../../../lib/trpc'
 
-export function Garden3D() {
+export function Garden3D({ onEditSign }: { onEditSign?: (id: string) => void }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const { garden } = useAppState()
-  const rebuildRef = useRef<null | ((items: { type: string; slot?: number }[]) => void)>(null)
+  const rebuildRef = useRef<null | ((items: { type: string; slot?: number; id?: string; imageUrl?: string }[]) => void)>(null)
   const utils = trpc.useUtils()
   const moveFlowerMutation = (trpc as any).flowers?.moveFlower?.useMutation?.()
   const gardenRef = useRef(garden)
@@ -483,7 +483,9 @@ export function Garden3D() {
       return group
     }
 
-    function rebuild(items: { type: string; slot?: number }[]) {
+    const textureLoader = new THREE.TextureLoader()
+    ;(textureLoader as any).setCrossOrigin?.('anonymous')
+    function rebuild(items: { type: string; slot?: number; id?: string; imageUrl?: string }[]) {
       // Clear previous plants
       plantHolders.forEach(holder => holder?.clear())
       for (const it of items) {
@@ -492,14 +494,116 @@ export function Garden3D() {
         const holder = plantHolders[slot]
         if (!holder) continue
         const type = it.type
-        const f = type === 'flower1'
-          ? makeFlower(0xf472b6, 1.2, 8)
-          : type === 'flower2'
-          ? makeFlower(0xfacc15, 1.0, 6)
-          : makeFlower(0xf43f5e, 1.4, 10)
-        f.rotation.y = Math.random() * Math.PI
-        ;(f as any).userData = { slot, id: (it as any).id }
-        holder.add(f)
+        let group: THREE.Group
+        if (type === 'flower1' || type === 'flower2' || type === 'flower3') {
+          group = type === 'flower1'
+            ? makeFlower(0xf472b6, 1.2, 8)
+            : type === 'flower2'
+            ? makeFlower(0xfacc15, 1.0, 6)
+            : makeFlower(0xf43f5e, 1.4, 10)
+          group.rotation.y = Math.random() * Math.PI
+        } else if (type === 'imageSign') {
+          // imageSign: small signpost with a framed plane showing image
+          group = new THREE.Group()
+          const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.2, 12), new THREE.MeshStandardMaterial({ color: 0x8d6e63 as any, roughness: 0.9 }))
+          pole.position.y = 1.1
+          pole.castShadow = true
+          pole.receiveShadow = true
+          group.add(pole)
+
+          const frame = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.95, 0.06), new THREE.MeshStandardMaterial({ color: 0x5d4037 as any, roughness: 0.8 }))
+          frame.position.set(0, 1.9, 0)
+          frame.rotation.x = -Math.PI / 16
+          frame.castShadow = true
+          frame.receiveShadow = true
+          group.add(frame)
+          // add a thin black backboard slightly behind the picture to ensure contrast
+          const backboard = new THREE.Mesh(new THREE.PlaneGeometry(0.82 * 6, 0.56 * 6), new THREE.MeshBasicMaterial({ color: 0x000000 }))
+          backboard.position.set(0, 1.9, -0.02)
+          backboard.rotation.x = -Math.PI / 16
+          group.add(backboard)
+
+          const rawUrl = (it as any).imageUrl || 'https://placehold.co/256x256'
+          const proxied = `/api/proxy-image?url=${encodeURIComponent(rawUrl)}`
+          const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
+          mat.depthWrite = false
+          mat.depthTest = false
+          const imageTex = new THREE.Texture()
+          imageTex.colorSpace = (THREE as any).SRGBColorSpace ?? (THREE as any).sRGBEncoding
+          const img = new Image()
+          img.crossOrigin = 'anonymous'
+          img.onload = () => {
+            imageTex.image = img
+            imageTex.needsUpdate = true
+            mat.map = imageTex
+            ;(mat as any).needsUpdate = true
+          }
+          img.onerror = () => {
+            // fallback solid color shows the frame is visible
+            mat.map = null as any
+          }
+          img.src = proxied
+          const picture = new THREE.Mesh(new THREE.PlaneGeometry(0.78, 0.52), mat)
+          picture.position.set(0, 1.9, 0.3)
+          picture.rotation.x = -Math.PI / 16
+          picture.scale.set(-6, 6, 1)
+          picture.renderOrder = 1000
+          group.add(picture)
+          ;(group as any).userData = { isSign: true }
+          // Face the camera (-Z direction) to be safe
+          group.rotation.y = Math.PI
+        } else if (type === 'tallImage') {
+          group = new THREE.Group()
+          const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 4.8, 24), new THREE.MeshStandardMaterial({ color: 0x8d6e63 as any, roughness: 0.9 }))
+          pole.position.y = 2.4
+          pole.castShadow = true
+          pole.receiveShadow = true
+          group.add(pole)
+
+          const frame = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.95, 0.06), new THREE.MeshStandardMaterial({ color: 0x5d4037 as any, roughness: 0.8 }))
+          frame.position.set(0, 3.4, 0)
+          frame.rotation.x = -Math.PI / 16
+          frame.castShadow = true
+          frame.receiveShadow = true
+          group.add(frame)
+
+          const backboard = new THREE.Mesh(new THREE.PlaneGeometry(0.82 * 6, 0.56 * 6), new THREE.MeshBasicMaterial({ color: 0x000000 }))
+          backboard.position.set(0, 3.4, -0.02)
+          backboard.rotation.x = -Math.PI / 16
+          group.add(backboard)
+
+          const rawUrl = (it as any).imageUrl || 'https://placehold.co/256x256'
+          const proxied = `/api/proxy-image?url=${encodeURIComponent(rawUrl)}`
+          const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 1 })
+          mat.depthWrite = false
+          mat.depthTest = false
+          const imageTex = new THREE.Texture()
+          imageTex.colorSpace = (THREE as any).SRGBColorSpace ?? (THREE as any).sRGBEncoding
+          const img = new Image()
+          img.crossOrigin = 'anonymous'
+          img.onload = () => {
+            imageTex.image = img
+            imageTex.needsUpdate = true
+            mat.map = imageTex
+            ;(mat as any).needsUpdate = true
+          }
+          img.onerror = () => {
+            mat.map = null as any
+          }
+          img.src = proxied
+          const picture = new THREE.Mesh(new THREE.PlaneGeometry(0.78, 0.52), mat)
+          picture.position.set(0, 3.4, 0.3)
+          picture.rotation.x = -Math.PI / 16
+          picture.scale.set(-6, 6, 1)
+          picture.renderOrder = 1000
+          group.add(picture)
+          ;(group as any).userData = { isSign: true }
+          group.rotation.y = Math.PI
+        } else {
+          group = new THREE.Group()
+        }
+        ;(group as any).userData = { ...(group as any).userData, slot, id: (it as any).id, type }
+        holder.add(group)
       }
     }
     rebuildRef.current = rebuild
@@ -525,6 +629,56 @@ export function Garden3D() {
       pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1
       pointer.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1
       raycaster.setFromCamera(pointer, camera)
+      // Start drag on first movement for fine pointers
+      if (selectedItemId && !dragging) {
+        const isFinePointer = lastPointerType === 'mouse' || (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: fine)').matches)
+        if (isFinePointer && selectedType) {
+          if (typeof selectedSlot === 'number') {
+            const holder = plantHolders[selectedSlot]
+            const plantGroup = holder?.children.find((ch: any) => (ch as any)?.userData?.id === selectedItemId)
+            if (plantGroup) {
+              draggedOriginal = plantGroup as THREE.Object3D
+              try { (draggedOriginal as any).visible = false } catch {}
+            }
+          }
+          const ghost = selectedType === 'flower1'
+            ? makeFlower(0xf472b6, 1.2, 8)
+            : selectedType === 'flower2'
+            ? makeFlower(0xfacc15, 1.0, 6)
+            : selectedType === 'flower3'
+            ? makeFlower(0xf43f5e, 1.4, 10)
+            : (() => {
+                const g = new THREE.Group()
+                const tall = selectedType === 'tallImage'
+                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, tall ? 4.8 : 2.2, 12), new THREE.MeshStandardMaterial({ color: 0x8d6e63 as any, roughness: 0.9 }))
+                pole.position.y = tall ? 2.4 : 1.1
+                g.add(pole)
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.95, 0.06), new THREE.MeshStandardMaterial({ color: 0x5d4037 as any, roughness: 0.8 }))
+                frame.position.set(0, tall ? 3.4 : 1.9, 0)
+                frame.rotation.x = -Math.PI / 16
+                g.add(frame)
+                const picture = new THREE.Mesh(new THREE.PlaneGeometry(0.78, 0.52), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide }))
+                picture.position.set(0, tall ? 3.4 : 1.9, 0.24)
+                picture.rotation.x = -Math.PI / 16
+                picture.scale.set(-6, 6, 1)
+                g.add(picture)
+                g.rotation.y = Math.PI
+                return g
+              })()
+          ghost.traverse((obj: any) => {
+            if ((obj as any).isMesh && (obj as any).material) {
+              const m = ((obj as any).material as any)
+              ;(obj as any).material = m.clone()
+              ;(obj as any).material.transparent = true
+              ;(obj as any).material.opacity = 0.8
+            }
+          })
+          dragGhost = ghost
+          scene.add(ghost)
+          dragging = true
+          ;(renderer.domElement.style as any).cursor = 'grabbing'
+        }
+      }
       const intersects = raycaster.intersectObjects(pickMeshes, false)
       const mesh = intersects[0]?.object as THREE.Mesh | undefined
       const newIndex = typeof mesh?.userData?.potIndex === 'number' ? mesh!.userData.potIndex as number : null
@@ -649,24 +803,31 @@ export function Garden3D() {
         pot.add(selectedGlow)
 
         lastPointerType = ev.pointerType || null
-        // For fine pointers (mouse/trackpad), create a drag ghost that follows cursor
+        // Do not start dragging yet; wait for pointer movement
         const isFinePointer = lastPointerType === 'mouse' || (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: fine)').matches)
-        dragging = isFinePointer
-        if (dragging && selectedType) {
+        dragging = false
+        if (false && isFinePointer && selectedType) {
           // Hide original plant while dragging to avoid duplicate
-          const holder = plantHolders[selectedSlot]
-          if (holder) {
-            const plantGroup = holder.children.find((ch: any) => (ch as any)?.userData?.id === selectedItemId)
-            if (plantGroup) {
-              draggedOriginal = plantGroup as THREE.Object3D
-              draggedOriginal.visible = false
-            }
-          }
+          // (dead path left intentionally disabled)
           const ghost = selectedType === 'flower1'
             ? makeFlower(0xf472b6, 1.2, 8)
             : selectedType === 'flower2'
             ? makeFlower(0xfacc15, 1.0, 6)
-            : makeFlower(0xf43f5e, 1.4, 10)
+            : selectedType === 'flower3'
+            ? makeFlower(0xf43f5e, 1.4, 10)
+            : (() => {
+                const g = new THREE.Group()
+                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.0, 12), new THREE.MeshStandardMaterial({ color: 0x8d6e63 as any, roughness: 0.9 }))
+                pole.position.y = 0.5
+                g.add(pole)
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.65, 0.06), new THREE.MeshStandardMaterial({ color: 0x5d4037 as any, roughness: 0.8 }))
+                frame.position.set(0, 0.95, 0)
+                g.add(frame)
+                const picture = new THREE.Mesh(new THREE.PlaneGeometry(0.78, 0.52), new THREE.MeshBasicMaterial({ color: 0xffffff }))
+                picture.position.set(0, 0.95, 0.035)
+                g.add(picture)
+                return g
+              })()
           ghost.traverse((obj: any) => {
             if (obj.isMesh && obj.material) {
               obj.material = obj.material.clone()
@@ -688,6 +849,15 @@ export function Garden3D() {
     }
     function onPointerUp(_ev: PointerEvent) {
       if (!selectedItemId) return
+      // If a sign was tapped (no hover target change), open settings instead of moving
+      if (!dragging && (selectedType === 'imageSign' || selectedType === 'tallImage')) {
+        try {
+          onEditSign?.(selectedItemId)
+        } catch {}
+        clearSelection(false)
+        ;(renderer.domElement.style as any).cursor = 'default'
+        return
+      }
       tryMoveTo(hoveredIndex)
       ;(renderer.domElement.style as any).cursor = 'default'
     }

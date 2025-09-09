@@ -7,11 +7,11 @@
 .card {
   width: 100%;
   max-width: 560px;
-  background: linear-gradient(180deg, #FFFFFF, #FAFEFF);
+  background: var(--panel-bg);
   border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 16px;
-  box-shadow: 0 12px 28px rgba(0,0,0,0.08);
+  box-shadow: 0 8px 18px var(--shadow-color);
 }
 
 .title {
@@ -24,7 +24,7 @@
   padding: 10px 12px;
   border: 1px solid var(--border-color);
   border-radius: 10px;
-  background: #FFF;
+  background: var(--secondary-background-color);
 }
 
 .uploader {
@@ -33,10 +33,10 @@
   height: 220px;
   border-radius: 14px;
   border: 1px dashed #CBD5E1;
-  color: #888;
+  color: var(--text-secondary);
   display: grid;
   place-items: center;
-  background: repeating-linear-gradient(45deg, #FFF, #FFF 10px, #FFFBFE 10px, #FFFBFE 20px);
+  background: repeating-linear-gradient(45deg, #FFF, #FFF 10px, #F6FFF2 10px, #F6FFF2 20px);
 }
 
 .uploader input { display: none; }
@@ -53,7 +53,7 @@
   width: 100%;
   padding: 12px 14px;
   border-radius: 12px;
-  background: linear-gradient(90deg, #22C55E, #10B981);
+  background: var(--primary-color);
   color: white;
 }
 
