@@ -1,15 +1,12 @@
 import z from "zod"
+import { proofsSchema } from "./proofs"
 
 export const habitsSchema = z.object({
   id: z.string(),
   title: z.string(),
   createdAt: z.string(),
-  proofs: z.array(z.object({
-    id: z.string(),
-    goalId: z.string(),
-    imageDataUrl: z.string(),
-    createdAt: z.string()
-  }))
+  user_id: z.string(),
+  proofs: z.array(proofsSchema)
 })
 
 export type Habits = z.infer<typeof habitsSchema>

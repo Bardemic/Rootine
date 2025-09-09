@@ -18,6 +18,10 @@ export function BottomNav() {
         <span className={styles.icon}>🌷</span>
         <span className={styles.label}>Garden</span>
       </Link>
+      <Link to="/account" className={`${styles.item} ${current === '/account' ? styles.active : ''}`}>
+        <span className={styles.icon}>👤</span>
+        <span className={styles.label}>Account</span>
+      </Link>
     </nav>
   )
 }

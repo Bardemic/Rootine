@@ -15,8 +15,24 @@ export default defineConfig(({ mode }) => ({
     port: 7000,
     proxy: {
       '/trpc': {
-        target: process.env.VITE_BACKEND_URL || 'https://localhost:7001',
-        changeOrigin: true
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:7001',
+        changeOrigin: true,
+        secure: false,
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.setHeader('Origin', 'http://localhost:7000')
+          })
+        }
+      },
+      '/api/auth': {
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:7001',
+        changeOrigin: true,
+        secure: false,
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.setHeader('Origin', 'http://localhost:7000')
+          })
+        }
       }
     }
   }

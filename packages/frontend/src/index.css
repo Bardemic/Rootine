@@ -1,10 +1,13 @@
-::root {
+:root {
   background-color: var(--main-background-color);
-  --primary-color: #F8455A;
-  --primary-color-hover: #E11D48;
-  --main-background-color: #F7F7F7;
-  --secondary-background-color: rgba(255, 255, 255, 0.7);
-  --border-color: rgba(229, 231, 235, 0.9);
+  --primary-color: #dc2626;
+  --primary-color-hover: #991b1b;
+  --main-background-color: #e5e7eb;
+  --secondary-background-color: #ffffff;
+  --border-color: #9ca3af;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --shadow-color: rgba(0, 0, 0, 0.1);
 }
 
 
@@ -31,7 +34,8 @@ html, body, #root {
 
 body {
   font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  color: #333;
+  color: var(--text-primary);
+  background: var(--main-background-color);
   /* overflow: hidden; */
 }
 

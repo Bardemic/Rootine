@@ -1,4 +1,6 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import React, { createContext, useCallback, useContext, useMemo } from 'react'
+import { trpc } from '../../lib/trpc'
+// import { useQueryClient } from '@tanstack/react-query'
 
 export type Proof = {
   id: string
@@ -11,7 +13,6 @@ export type Goal = {
   id: string
   title: string
   createdAt: string
-  proofs: Proof[]
 }
 
 export type GardenItem = {
@@ -39,111 +40,111 @@ type AppStateContextType = AppStateShape & AppActions
 
 const AppStateContext = createContext<AppStateContextType | null>(null)
 
-const LOCAL_STORAGE_KEY = 'rootine-app-state'
-
-function generateId(prefix: string): string {
-  return `${prefix}_${Math.random().toString(36).slice(2)}_${Date.now()}`
-}
-
-function getInitialState(): AppStateShape {
-  try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY)
-    if (raw) return JSON.parse(raw)
-  } catch {}
-  return {
-    goals: [
-      {
-        id: generateId('goal'),
-        title: 'Go for a daily walk',
-        createdAt: new Date().toISOString(),
-        proofs: [],
-      },
-    ],
-    coins: 20,
-    garden: { items: [] },
-  }
-}
-
 export function AppStateProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AppStateShape>(() => getInitialState())
-  const isFirst = useRef(true)
+  // const _queryClient = useQueryClient() // reserved for future manual invalidations
+  const utils = trpc.useUtils()
 
-  useEffect(() => {
-    if (isFirst.current) {
-      isFirst.current = false
-      return
-    }
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state))
-    } catch {}
-  }, [state])
+  // Goals (habits)
+  const goalsQuery = trpc.habits.getHabits.useQuery(undefined, {
+    staleTime: 30_000,
+  })
+
+  // Garden items from flowers
+  const flowersQuery = trpc.flowers.getFlowers.useQuery(undefined, {
+    staleTime: 30_000,
+  })
+
+  // Coins: assume part of habits summary until users.* exists
+  const coinsQuery = { data: 0 } as any
+
+  // Mutations
+  const createHabit = trpc.habits.createHabit?.useMutation?.() || { mutate: () => {} }
+  const deleteHabit = trpc.habits.deleteHabit.useMutation()
+  const createProof = (trpc as any).proofs?.createProof?.useMutation?.() || { mutate: () => {} }
+  const createFlower = trpc.flowers.createFlower?.useMutation?.() || { mutate: () => {} }
+  const spendCoins = { mutate: () => {} } as any
+  const earnCoins = { mutate: () => {} } as any
 
   const addGoal = useCallback((title: string) => {
-    setState(prev => ({
-      ...prev,
-      goals: [
-        ...prev.goals,
-        {
-          id: generateId('goal'),
-          title,
-          createdAt: new Date().toISOString(),
-          proofs: [],
+    ;(createHabit as any).mutate(
+      { title },
+      {
+        onSuccess: () => {
+          ;(utils as any).habits?.getHabits?.invalidate?.()
         },
-      ],
-    }))
-  }, [])
+      },
+    )
+  }, [createHabit, utils])
 
   const removeGoal = useCallback((goalId: string) => {
-    setState(prev => ({
-      ...prev,
-      goals: prev.goals.filter(g => g.id !== goalId),
-    }))
-  }, [])
+    deleteHabit.mutate(
+      { id: goalId },
+      {
+        onSuccess: () => {
+          utils.habits.getHabits.invalidate()
+        },
+      },
+    )
+  }, [deleteHabit, utils])
 
   const addProof = useCallback((goalId: string, imageDataUrl: string) => {
-    const newProof: Proof = {
-      id: generateId('proof'),
-      goalId,
-      imageDataUrl,
-      createdAt: new Date().toISOString(),
-    }
-    setState(prev => ({
-      ...prev,
-      coins: prev.coins + 5,
-      goals: prev.goals.map(g => (g.id === goalId ? { ...g, proofs: [newProof, ...g.proofs].slice(0, 30) } : g)),
-    }))
-  }, [])
-
-  const purchaseFlower = useCallback((type: GardenItem['type'], cost: number) => {
-    setState(prev => {
-      if (prev.coins < cost) return prev
-      const usedSlots = new Set(prev.garden.items.map(i => i.slot))
-      let slot = 0
-      while (usedSlots.has(slot)) slot += 1
-      return {
-        ...prev,
-        coins: prev.coins - cost,
-        garden: {
-          items: [
-            ...prev.garden.items,
-            {
-              id: generateId('flower'),
-              type,
-              slot,
-            },
-          ],
+    ;(createProof as any).mutate(
+      { goalId, imageDataUrl },
+      {
+        onSuccess: () => {
+          ;(utils as any).habits?.getHabits?.invalidate?.()
+          // no coins route yet
+          ;(earnCoins as any).mutate?.({ amount: 5 })
         },
-      }
-    })
-  }, [])
+      },
+    )
+  }, [createProof, earnCoins, utils])
+
+  const purchaseFlower = useCallback((type: GardenItem['type'], _cost: number) => {
+    // naive placement: find next available slot from current flowers
+    const current = flowersQuery.data || []
+    const usedSlots = new Set<number>(
+      (current as any[]).map((f: any) => {
+        const pos = Array.isArray(f.position) ? f.position : [0, 0]
+        const x = Number(pos[0]) || 0
+        const y = Number(pos[1]) || 0
+        return y * 8 + x
+      }),
+    )
+    let slot = 0
+    while (usedSlots.has(slot)) slot += 1
+    const x = slot % 8
+    const y = Math.floor(slot / 8)
+
+    ;(createFlower as any).mutate(
+      { name: type, type, position: [x, y] },
+      {
+        onSuccess: () => {
+          utils.flowers.getFlowers.invalidate()
+        },
+      },
+    )
+  }, [createFlower, flowersQuery.data, utils, spendCoins])
+
+  const mappedGoals: Goal[] = (goalsQuery.data as any) || []
+  const mappedFlowers: GardenItem[] = ((flowersQuery.data as any[]) || []).map((f: any) => {
+    const pos = Array.isArray(f.position) ? f.position : [0, 0]
+    const x = Number(pos[0]) || 0
+    const y = Number(pos[1]) || 0
+    const slot = y * 8 + x
+    return { id: String(f.id ?? `${x}-${y}`), type: String(f.type ?? 'flower1') as any, slot }
+  })
+  const coins: number = (coinsQuery as any)?.data ?? 0
 
   const value = useMemo<AppStateContextType>(() => ({
-    ...state,
+    goals: mappedGoals,
+    coins,
+    garden: { items: mappedFlowers },
     addGoal,
     removeGoal,
     addProof,
     purchaseFlower,
-  }), [state, addGoal, removeGoal, addProof, purchaseFlower])
+  }), [mappedGoals, coins, mappedFlowers, addGoal, removeGoal, addProof, purchaseFlower])
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>
 }

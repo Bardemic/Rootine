@@ -1,5 +1,6 @@
 import styles from './Header.module.css'
 import { CoinBadge } from '../coins/CoinBadge/CoinBadge'
+import { UserMenu } from '../auth/UserMenu'
 
 export function Header() {
   return (
@@ -8,7 +9,10 @@ export function Header() {
         <span className={styles.logo}>🌱</span>
         <h1 className={styles.title}>Rootine</h1>
       </div>
-      <CoinBadge />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <CoinBadge />
+        <UserMenu />
+      </div>
     </header>
   )
 }

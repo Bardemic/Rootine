@@ -1,26 +1,45 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import styles from './UploadForm.module.css'
 import { useAppState } from '../../AppStateProvider/AppStateProvider'
+import { trpc } from '../../../lib/trpc'
 
 export function UploadForm() {
-  const { goals, addProof } = useAppState()
-  const [goalId, setGoalId] = useState(goals[0]?.id || '')
+  const { goals } = useAppState()
+  const [goalId, setGoalId] = useState('')
   const [preview, setPreview] = useState<string | null>(null)
+  const [file, setFile] = useState<File | null>(null)
+  const utils = trpc.useUtils()
+
+  useEffect(() => {
+    if (!goalId && goals.length > 0) {
+      setGoalId(goals[0].id)
+    }
+  }, [goals, goalId])
 
   const canSubmit = useMemo(() => Boolean(goalId && preview), [goalId, preview])
 
   const handleSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setFile(file)
     const reader = new FileReader()
     reader.onload = () => setPreview(reader.result as string)
     reader.readAsDataURL(file)
   }
 
-  const handleSubmit = () => {
-    if (!canSubmit || !preview) return
-    addProof(goalId, preview)
+  const handleSubmit = async () => {
+    if (!canSubmit || !file) return
+    const form = new FormData()
+    form.append('goalId', goalId)
+    form.append('file', file)
+    await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:7001'}/api/upload/proof`, {
+      method: 'POST',
+      credentials: 'include',
+      body: form,
+    })
+    ;(utils as any).proofs?.getProofs?.invalidate?.({ goalId })
     setPreview(null)
+    setFile(null)
   }
 
   return (
