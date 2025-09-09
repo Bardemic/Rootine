@@ -45,8 +45,8 @@ export const flowersRouter = router({
       }
 
       await client.query('UPDATE auth.user SET coin = coin - $2 WHERE id = $1', [userId, price]);
-      // Default image for imageSign purchases
-      const defaultImage = (input.flowerId === 'imageSign' || input.flowerId === 'tallImage') ? 'https://placehold.co/256x256' : null;
+      // Ensure image is never null to satisfy NOT NULL constraint
+      const defaultImage = 'https://placehold.co/256x256';
       const insertRes = await client.query(
         'INSERT INTO flowers (user_id, name, image, type, position) VALUES ($1, $2, $3, $4, $5) RETURNING *',
         [userId, input.flowerId, defaultImage, input.flowerId, input.position],
