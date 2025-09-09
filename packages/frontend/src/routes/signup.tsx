@@ -34,7 +34,8 @@ function RouteComponent() {
   }
 
   return (
-    <div style={{ width: '100%', minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: 24 }}>
+    <div style={{ width: '100%', minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: 24, position: 'relative' }}>
+      <h1 style={{ position: 'absolute', top: 24, left: 0, right: 0, textAlign: 'center', margin: 0, fontSize: 36, fontWeight: 900, letterSpacing: 1, background: 'linear-gradient(90deg, #FF7DA1, #7DB7FF)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>Rootine</h1>
       <form onSubmit={onSubmit} style={{ display: 'grid', gap: 12, width: 'min(420px, 100%)', padding: 20, border: '1px solid var(--border-color)', borderRadius: 12, background: '#fff' }}>
         <h2 style={{ margin: 0 }}>Create account</h2>
         <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" required style={{ padding: 10, borderRadius: 8, border: '1px solid var(--border-color)' }} />

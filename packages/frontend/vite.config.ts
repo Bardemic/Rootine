@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => ({
   ],
   server: {
     allowedHosts: ['*.localhost', '127.0.0.1', 'f7a159480d3e.ngrok-free.app'],
-    port: 7000,
+    port: 5050,
     proxy: {
       '/trpc': {
         target: process.env.VITE_BACKEND_URL || 'http://localhost:7001',
