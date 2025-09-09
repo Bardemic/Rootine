@@ -16,42 +16,42 @@ export default defineConfig(({ mode }) => ({
     port: 5050,
     proxy: {
       '/trpc': {
-        target: process.env.VITE_BACKEND_URL || 'http://localhost:7001',
+        target: process.env.VITE_BACKEND_URL || 'https://api-rootine.bardemic.com',
         changeOrigin: true,
         secure: false,
         configure: (proxy) => {
           (proxy as any).on('proxyReq', (proxyReq: any) => {
-            proxyReq.setHeader('Origin', 'http://localhost:7000')
+            proxyReq.setHeader('Origin', 'https://rootine.bardemic.com')
           })
         }
       },
       '/api/auth': {
-        target: process.env.VITE_BACKEND_URL || 'http://localhost:7001',
+        target: process.env.VITE_BACKEND_URL || 'https://api-rootine.bardemic.com',
         changeOrigin: true,
         secure: false,
         configure: (proxy) => {
           (proxy as any).on('proxyReq', (proxyReq: any) => {
-            proxyReq.setHeader('Origin', 'http://localhost:7000')
+            proxyReq.setHeader('Origin', 'https://rootine.bardemic.com')
           })
         }
       },
       '/api/upload': {
-        target: process.env.VITE_BACKEND_URL || 'http://localhost:7001',
+        target: process.env.VITE_BACKEND_URL || 'https://api-rootine.bardemic.com',
         changeOrigin: true,
         secure: false,
         configure: (proxy) => {
           (proxy as any).on('proxyReq', (proxyReq: any) => {
-            proxyReq.setHeader('Origin', 'http://localhost:7000')
+            proxyReq.setHeader('Origin', 'https://rootine.bardemic.com')
           })
         }
       },
       '/api/proxy-image': {
-        target: process.env.VITE_BACKEND_URL || 'http://localhost:7001',
+        target: process.env.VITE_BACKEND_URL || 'https://api-rootine.bardemic.com',
         changeOrigin: true,
         secure: false,
         configure: (proxy) => {
           (proxy as any).on('proxyReq', (proxyReq: any) => {
-            proxyReq.setHeader('Origin', 'http://localhost:7000')
+            proxyReq.setHeader('Origin', 'https://rootine.bardemic.com')
           })
         }
       }
