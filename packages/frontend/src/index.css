@@ -1,0 +1,52 @@
+::root {
+  background-color: var(--main-background-color);
+  --primary-color: #F8455A;
+  --primary-color-hover: #E11D48;
+  --main-background-color: #F7F7F7;
+  --secondary-background-color: rgba(255, 255, 255, 0.7);
+  --border-color: rgba(229, 231, 235, 0.9);
+}
+
+
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font: inherit;
+  color: inherit;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: #333;
+  /* overflow: hidden; */
+}
+
+button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  border-radius: 0;
+}
+
+
