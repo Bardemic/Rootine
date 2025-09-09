@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { authClient } from '../lib/auth'
 
 export const Route = createFileRoute('/login')({
@@ -11,13 +11,21 @@ function RouteComponent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const { data: session } = authClient.useSession()
+
+  // If already authenticated (or once authentication completes), redirect to home
+  useEffect(() => {
+    if (session) {
+      navigate({ to: '/', replace: true })
+    }
+  }, [session, navigate])
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     try {
       await authClient.signIn.email({ email, password })
-      navigate({ to: '/' })
+      // Session-based effect above will handle redirect; no-op here to avoid race
     } catch (err: any) {
       setError(err?.message || 'Sign in failed')
     }

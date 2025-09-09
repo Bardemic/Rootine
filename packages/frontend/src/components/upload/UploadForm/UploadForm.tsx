@@ -8,7 +8,6 @@ export function UploadForm() {
   const [goalId, setGoalId] = useState('')
   const [preview, setPreview] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
-  const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -35,10 +34,9 @@ export function UploadForm() {
     setSubmitting(true)
     setError(null)
     try {
-      await addProof(goalId, preview, description.trim() || undefined)
+      await addProof(goalId, preview)
       setPreview(null)
       setFile(null)
-      setDescription('')
       navigate({ to: '/' })
     } catch (e: any) {
       const msg = e?.message || e?.data?.message || 'Upload failed. Please try again.'
@@ -75,14 +73,6 @@ export function UploadForm() {
             <span>Tap to take a photo</span>
           </label>
         )}
-
-        <textarea
-          className={styles.textarea}
-          placeholder="Optional: Add a short description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={3}
-        />
 
         {error && <div className={styles.error}>{String(error)}</div>}
 

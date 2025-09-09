@@ -3,6 +3,9 @@
   min-height: 100dvh;
   padding-bottom: 96px;
   background: var(--main-background-color);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .header {
@@ -125,9 +128,9 @@
 }
 
 .signOut {
-  margin-top: 6px;
+  margin: auto 16px 16px 16px;
   padding: 14px;
-  width: 100%;
+  width: calc(100% - 32px);
   border-radius: 14px;
   background: linear-gradient(180deg, var(--primary-color), var(--primary-color));
   color: white;
@@ -137,4 +140,17 @@
   cursor: pointer;
 }
 
+
+/* Simplified header */
+.simpleHeader {
+  padding: 24px 16px 0 16px;
+}
+
+.email {
+  font-weight: 700;
+}
+
+.spacer {
+  flex: 1;
+}
 
