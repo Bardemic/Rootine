@@ -1,8 +1,9 @@
 import { createAuthClient } from "better-auth/react"
 
-// Use relative baseURL so requests are same-origin and go through Vite proxy
+// Use absolute baseURL in production, relative in dev (Vite proxy)
+const base = (import.meta as any).env?.VITE_BACKEND_URL || ""
 export const authClient = createAuthClient({
-    baseURL: "",
+    baseURL: base,
 })
 
 

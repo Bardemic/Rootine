@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => ({
     react(),
   ],
   server: {
-    allowedHosts: ['*.localhost', '127.0.0.1', 'f7a159480d3e.ngrok-free.app'],
+    allowedHosts: ['*.localhost', '127.0.0.1', 'f7a159480d3e.ngrok-free.app, https://rootine.bardemic.com', 'https://api-rootine.bardemic.com'],
     port: 5050,
     proxy: {
       '/trpc': {

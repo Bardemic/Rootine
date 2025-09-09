@@ -22,8 +22,9 @@ export const auth = betterAuth({
         process.env.FRONTEND_URL || 'http://localhost:7000',
     ],
     cookies: {
-        secure: false,
-        sameSite: 'lax',
+        secure: String(process.env.NODE_ENV).toLowerCase() === 'production',
+        sameSite: String(process.env.NODE_ENV).toLowerCase() === 'production' ? 'none' : 'lax',
+        domain: process.env.COOKIE_DOMAIN || undefined,
     },
 });
 

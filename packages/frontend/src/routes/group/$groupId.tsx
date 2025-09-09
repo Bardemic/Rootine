@@ -39,7 +39,8 @@ function RouteComponent() {
     fd.append('file', file)
     if (description.trim()) fd.append('description', description.trim())
     try {
-      const resp = await fetch('/api/upload/group-proof', { method: 'POST', body: fd, credentials: 'include' })
+      const base = (import.meta as any).env?.VITE_BACKEND_URL || ''
+      const resp = await fetch(`${base}/api/upload/group-proof`, { method: 'POST', body: fd, credentials: 'include' })
       if (resp.ok) {
         setFile(null)
         setPreview(null)

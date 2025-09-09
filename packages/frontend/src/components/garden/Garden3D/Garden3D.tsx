@@ -699,7 +699,8 @@ export function Garden3D({ onEditSign }: { onEditSign?: (id: string) => void }) 
           group.add(backboard)
 
           const rawUrl = (it as any).imageUrl || 'https://placehold.co/256x256'
-          const proxied = `/api/proxy-image?url=${encodeURIComponent(rawUrl)}`
+          const base = (import.meta as any).env?.VITE_BACKEND_URL || ''
+          const proxied = `${base}/api/proxy-image?url=${encodeURIComponent(rawUrl)}`
           const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide })
           mat.depthWrite = false
           mat.depthTest = false
@@ -748,7 +749,8 @@ export function Garden3D({ onEditSign }: { onEditSign?: (id: string) => void }) 
           group.add(backboard)
 
           const rawUrl = (it as any).imageUrl || 'https://placehold.co/256x256'
-          const proxied = `/api/proxy-image?url=${encodeURIComponent(rawUrl)}`
+          const base = (import.meta as any).env?.VITE_BACKEND_URL || ''
+          const proxied = `${base}/api/proxy-image?url=${encodeURIComponent(rawUrl)}`
           const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 1 })
           mat.depthWrite = false
           mat.depthTest = false
