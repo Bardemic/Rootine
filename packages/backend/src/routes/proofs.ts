@@ -3,7 +3,8 @@ import { Proofs } from "../models/proofs";
 import { z } from "zod";
 import { protectedProcedure, router } from "../trpc";
 import { TRPCError } from "@trpc/server";
-import { createPresignedUploadUrl } from "../utils/storage";
+import { createPresignedUploadUrl, getS3Client } from "../utils/storage";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 
 export const proofsRouter = router({
   getProofs: protectedProcedure.input(z.object({ goalId: z.string() })).query(async ({ ctx, input }) => {
@@ -37,6 +38,46 @@ export const proofsRouter = router({
       throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
     }
   }),
+  submitProof: protectedProcedure.input(z.object({ goalId: z.string(), dataUrl: z.string() })).mutation(async ({ ctx, input }) => {
+    try {
+      // Ensure habit belongs to current user
+      const getGoal = await pool.query('SELECT * FROM habits WHERE id = $1', [input.goalId]);
+      if (ctx.user.id !== getGoal.rows[0]?.user_id) {
+        throw new TRPCError({ code: 'UNAUTHORIZED' });
+      }
+
+      // Parse data URL
+      const { contentType, buffer } = parseDataUrl(input.dataUrl);
+      const fileExt = contentTypeToExt(contentType || 'image/jpeg');
+      const key = `proofs/${ctx.user.id}/${input.goalId}/${Date.now()}.${fileExt}`;
+
+      // Upload to S3
+      const bucket = (process.env.S3_BUCKET || 'rootine') as string;
+      const s3 = getS3Client();
+      const command = new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: contentType || 'application/octet-stream',
+        ACL: 'public-read',
+      });
+      await s3.send(command);
+
+      const publicUrl = buildPublicUrl(key);
+
+      // Persist proof record
+      await pool.query('INSERT INTO proofs (habit_id, image_data_url) VALUES ($1, $2)', [input.goalId, publicUrl]);
+
+      // Increment user coins by 5 and return new balance
+      const coinRes = await pool.query('UPDATE auth.user SET coin = COALESCE(coin, 0) + 5 WHERE id = $1 RETURNING coin', [ctx.user.id]);
+      const coins: number | undefined = coinRes.rows?.[0]?.coin;
+
+      return { url: publicUrl, key, coins };
+    } catch (err) {
+      console.error('submitProof failed', err);
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR' });
+    }
+  }),
 });
 
 function contentTypeToExt(ct: string): string {
@@ -45,4 +86,49 @@ function contentTypeToExt(ct: string): string {
   if (ct.includes('heic') || ct.includes('heif')) return 'heic';
   if (ct.includes('gif')) return 'gif';
   return 'jpg';
+}
+
+function parseDataUrl(dataUrl: string): { contentType: string | undefined; buffer: Buffer } {
+  // Expected format: data:<mime>;base64,<data>
+  const match = /^data:([^;]+);base64,(.*)$/.exec(dataUrl);
+  if (!match) {
+    // Fallback: assume whole string is base64 jpeg
+    return { contentType: 'image/jpeg', buffer: Buffer.from(dataUrl.split(',').pop() || dataUrl, 'base64') };
+  }
+  const [, mime, base64] = match;
+  return { contentType: mime, buffer: Buffer.from(base64, 'base64') };
+}
+
+function buildPublicUrl(key: string): string {
+  const publicBase = sanitizeBaseUrl(process.env.S3_PUBLIC_BASE_URL);
+  const region = process.env.S3_REGION || 'us-east-2';
+  const bucket = process.env.S3_BUCKET || 'rootine';
+  const endpoint = process.env.S3_ENDPOINT;
+  const forcePathStyle = (process.env.S3_FORCE_PATH_STYLE || 'false').toLowerCase() === 'true';
+  if (publicBase) return `${publicBase.replace(/\/$/, '')}/${key}`;
+  if (endpoint) {
+    if (forcePathStyle) return `${endpoint.replace(/\/$/, '')}/${bucket}/${encodeURIComponentPath(key)}`;
+    return `${endpoint.replace(/\/$/, '')}/${bucket}/${encodeURIComponentPath(key)}`;
+  }
+  return `https://${bucket}.s3.${region}.amazonaws.com/${encodeURIComponentPath(key)}`;
+}
+
+function encodeURIComponentPath(path: string): string {
+  return path
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+}
+
+function sanitizeBaseUrl(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  let v = String(raw).trim();
+  const semi = v.indexOf(';');
+  if (semi !== -1) v = v.slice(0, semi);
+  const hash = v.indexOf('#');
+  if (hash !== -1) v = v.slice(0, hash);
+  v = v.replace(/^[\"']+/, '').replace(/[\"']+$/, '').trim();
+  if (!/^https?:\/\/[^\/]+(\/.*)?$/i.test(v)) return undefined;
+  v = v.replace(/\/+$/, '');
+  return v || undefined;
 }

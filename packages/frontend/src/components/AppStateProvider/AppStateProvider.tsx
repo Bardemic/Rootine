@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo } from 'react'
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react'
 import { trpc } from '../../lib/trpc'
 // import { useQueryClient } from '@tanstack/react-query'
 
@@ -54,16 +54,15 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     staleTime: 30_000,
   })
 
-  // Coins: assume part of habits summary until users.* exists
-  const coinsQuery = { data: 0 } as any
+  // Coins from protected user endpoint
+  const coinsQuery = trpc.user.coin.useQuery(undefined, { staleTime: 15_000 });
+  const [coinsState, setCoinsState] = useState<number>(coinsQuery.data ?? 0);
 
   // Mutations
-  const createHabit = trpc.habits.createHabit?.useMutation?.() || { mutate: () => {} }
-  const deleteHabit = trpc.habits.deleteHabit.useMutation()
-  const createProof = (trpc as any).proofs?.createProof?.useMutation?.() || { mutate: () => {} }
-  const createFlower = trpc.flowers.createFlower?.useMutation?.() || { mutate: () => {} }
-  const spendCoins = { mutate: () => {} } as any
-  const earnCoins = { mutate: () => {} } as any
+  const createHabit = trpc.habits.createHabit.useMutation();
+  const deleteHabit = trpc.habits.deleteHabit.useMutation();
+  const submitProof = trpc.proofs.submitProof.useMutation();
+  const purchaseFlowerMutation = trpc.flowers.purchaseFlower.useMutation()
 
   const addGoal = useCallback((title: string) => {
     ;(createHabit as any).mutate(
@@ -88,17 +87,16 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
   }, [deleteHabit, utils])
 
   const addProof = useCallback((goalId: string, imageDataUrl: string) => {
-    ;(createProof as any).mutate(
-      { goalId, imageDataUrl },
+    ;(submitProof as any).mutate(
+      { goalId, dataUrl: imageDataUrl },
       {
-        onSuccess: () => {
-          ;(utils as any).habits?.getHabits?.invalidate?.()
-          // no coins route yet
-          ;(earnCoins as any).mutate?.({ amount: 5 })
+        onSuccess: (res: any) => {
+          if (res && typeof res.coins === 'number') setCoinsState(res.coins)
+          ;(utils as any).proofs?.getProofs?.invalidate?.({ goalId })
         },
       },
     )
-  }, [createProof, earnCoins, utils])
+  }, [submitProof, utils])
 
   const purchaseFlower = useCallback((type: GardenItem['type'], _cost: number) => {
     // naive placement: find next available slot from current flowers
@@ -116,15 +114,15 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     const x = slot % 8
     const y = Math.floor(slot / 8)
 
-    ;(createFlower as any).mutate(
-      { name: type, type, position: [x, y] },
+    ;(purchaseFlowerMutation as any).mutate(
+      { flowerId: type, position: [x, y] },
       {
         onSuccess: () => {
           utils.flowers.getFlowers.invalidate()
         },
       },
     )
-  }, [createFlower, flowersQuery.data, utils, spendCoins])
+  }, [purchaseFlowerMutation, flowersQuery.data, utils])
 
   const mappedGoals: Goal[] = (goalsQuery.data as any) || []
   const mappedFlowers: GardenItem[] = ((flowersQuery.data as any[]) || []).map((f: any) => {
@@ -134,7 +132,7 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
     const slot = y * 8 + x
     return { id: String(f.id ?? `${x}-${y}`), type: String(f.type ?? 'flower1') as any, slot }
   })
-  const coins: number = (coinsQuery as any)?.data ?? 0
+  const coins: number = (coinsQuery as any)?.data ?? coinsState
 
   const value = useMemo<AppStateContextType>(() => ({
     goals: mappedGoals,

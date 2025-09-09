@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import styles from './UploadForm.module.css'
 import { useAppState } from '../../AppStateProvider/AppStateProvider'
-import { trpc } from '../../../lib/trpc'
 
 export function UploadForm() {
-  const { goals } = useAppState()
+  const { goals, addProof } = useAppState()
   const [goalId, setGoalId] = useState('')
   const [preview, setPreview] = useState<string | null>(null)
   const [file, setFile] = useState<File | null>(null)
-  const utils = trpc.useUtils()
 
   useEffect(() => {
     if (!goalId && goals.length > 0) {
@@ -28,16 +26,8 @@ export function UploadForm() {
   }
 
   const handleSubmit = async () => {
-    if (!canSubmit || !file) return
-    const form = new FormData()
-    form.append('goalId', goalId)
-    form.append('file', file)
-    await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:7001'}/api/upload/proof`, {
-      method: 'POST',
-      credentials: 'include',
-      body: form,
-    })
-    ;(utils as any).proofs?.getProofs?.invalidate?.({ goalId })
+    if (!canSubmit || !file || !preview) return
+    addProof(goalId, preview)
     setPreview(null)
     setFile(null)
   }
