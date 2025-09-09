@@ -39,7 +39,7 @@ function RouteComponent() {
     fd.append('file', file)
     if (description.trim()) fd.append('description', description.trim())
     try {
-      const base = (import.meta as any).env?.VITE_BACKEND_URL || ''
+      const base = ((import.meta as any).env?.VITE_BACKEND_URL) || ((import.meta as any).env?.DEV ? '' : 'https://api-rootine.bardemic.com')
       const resp = await fetch(`${base}/api/upload/group-proof`, { method: 'POST', body: fd, credentials: 'include' })
       if (resp.ok) {
         setFile(null)
