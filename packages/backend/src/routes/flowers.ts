@@ -53,6 +53,45 @@ export const flowersRouter = router({
     const flowers = await pool.query('SELECT * FROM flowers WHERE user_id = $1', [ctx.user.id]);
     return flowers.rows as Flowers[];
   }),
+  moveFlower: protectedProcedure.input(z.object({
+    id: z.string(),
+    position: z.array(z.number()).length(2),
+  })).mutation(async ({ ctx, input }) => {
+    const userId = ctx.user.id as string;
+    const [xRaw, yRaw] = input.position;
+    const x = Math.floor(Number(xRaw));
+    const y = Math.floor(Number(yRaw));
+    const COLS = 8;
+    const ROWS = 8;
+    if (Number.isNaN(x) || Number.isNaN(y) || x < 0 || x >= COLS || y < 0 || y >= ROWS) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Target position out of bounds' });
+    }
+
+    // Verify ownership
+    const existing = await pool.query('SELECT id, user_id FROM flowers WHERE id = $1', [input.id]);
+    const row = existing.rows[0] as any;
+    if (!row) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Flower not found' });
+    }
+    if (row.user_id !== userId) {
+      throw new TRPCError({ code: 'UNAUTHORIZED' });
+    }
+
+    // Ensure no collision with another of the user's flowers
+    const conflict = await pool.query(
+      'SELECT 1 FROM flowers WHERE user_id = $1 AND position = $2 AND id <> $3 LIMIT 1',
+      [userId, [x, y], input.id],
+    );
+    if (conflict.rowCount && conflict.rowCount > 0) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: 'Target pot is occupied' });
+    }
+
+    const updated = await pool.query(
+      'UPDATE flowers SET position = $1, updated_at = now() WHERE id = $2 AND user_id = $3 RETURNING *',
+      [[x, y], input.id, userId],
+    );
+    return updated.rows as Flowers[];
+  }),
   modifyFlower: protectedProcedure.input(flowersSchema).mutation(async ({ ctx, input }) => {
     const flower = await pool.query('UPDATE flowers SET name = $1, image = $2, type = $3, position = $4 WHERE id = $5 RETURNING *', [input.name, input.image, input.type, input.position, input.id]);
     return flower.rows as Flowers[];
