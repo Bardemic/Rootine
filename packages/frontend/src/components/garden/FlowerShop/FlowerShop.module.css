@@ -1,0 +1,26 @@
+.shop {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #FFFFFF, #FFF7FA);
+}
+
+.emoji { font-size: 22px; }
+.label { font-size: 12px; }
+.cost { font-size: 12px; color: #EF4444; font-weight: 600; }
+
+.item:disabled { opacity: 0.5; }
+
+

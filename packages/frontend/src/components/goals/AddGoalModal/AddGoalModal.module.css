@@ -1,0 +1,57 @@
+.modal::backdrop {
+  background: rgba(0,0,0,0.2);
+}
+
+.modal {
+  border: none;
+  padding: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  background: transparent;
+}
+
+.content {
+  width: min(520px, 92vw);
+  background: linear-gradient(180deg, #FFFFFF, #FFFBFE);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+}
+
+.heading {
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+.input {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 14px;
+  outline: none;
+  background: #FFF;
+}
+
+.actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cancel {
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: #FFF;
+}
+
+.save {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #FF6B8A, var(--primary-color));
+  color: #FFF;
+}
+
+

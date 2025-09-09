@@ -1,0 +1,25 @@
+.wrap { padding: 16px; }
+
+.garden {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.tile {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  border: 1px solid var(--border-color);
+  background: linear-gradient(180deg, #F0FDF4, #DCFCE7);
+}
+
+.flower { font-size: 26px; }
+
+.dot { color: #A7F3D0; font-size: 20px; }
+
+

@@ -1,0 +1,20 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #FFF, rgba(255,255,255,0.85));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 3px 10px rgba(0,0,0,0.06);
+}
+
+.icon {
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,0.1));
+}
+
+.count {
+  font-weight: 600;
+}
+
+

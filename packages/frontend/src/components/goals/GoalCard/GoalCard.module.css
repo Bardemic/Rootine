@@ -1,0 +1,66 @@
+.card {
+  padding: 14px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #FFFFFF, #FAFAFF);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.emoji {
+  font-size: 20px;
+}
+
+.removeBtn {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: #FFF;
+}
+
+.title {
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.progressBar {
+  margin-top: 12px;
+  height: 10px;
+  background: #F1F5F9;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress {
+  height: 100%;
+  background: linear-gradient(90deg, #FFB2C0, var(--primary-color));
+}
+
+.proofsRow {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.proof {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--border-color);
+}
+
+.empty {
+  font-size: 12px;
+  color: #888;
+}
+
+
