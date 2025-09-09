@@ -6,6 +6,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import styles from './Garden3D.module.css'
 import { useAppState } from '../../AppStateProvider/AppStateProvider'
 import { trpc } from '../../../lib/trpc'
+import { useAudio } from '../../audio/AudioProvider/AudioProvider'
 
 export function Garden3D({ onEditSign }: { onEditSign?: (id: string) => void }) {
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -14,6 +15,7 @@ export function Garden3D({ onEditSign }: { onEditSign?: (id: string) => void }) 
   const utils = trpc.useUtils()
   const moveFlowerMutation = (trpc as any).flowers?.moveFlower?.useMutation?.()
   const gardenRef = useRef(garden)
+  const audio = useAudio()
   useEffect(() => { gardenRef.current = garden }, [garden])
 
   useEffect(() => {
@@ -379,6 +381,8 @@ export function Garden3D({ onEditSign }: { onEditSign?: (id: string) => void }) 
     }
     addGravelPath()
 
+    // Corner decor will be added after shared shadow texture is prepared
+
     // Planter grid (8x8)
 
     const potGroup = new THREE.Group()
@@ -408,6 +412,156 @@ export function Garden3D({ onEditSign }: { onEditSign?: (id: string) => void }) 
       return tex
     }
     const shadowTexture = makeShadowTexture()
+
+    // Corner decor: red shed and tilted car (placed on far back corners, opposite the road at +Z)
+    function addCornerDecor() {
+      const decorGroup = new THREE.Group()
+
+      // Estimate field half extents from ground geometry
+      const groundHalfX = (groundGeo as any)?.parameters?.width ? (groundGeo as any).parameters.width / 2 : 30
+      const groundHalfZ = (groundGeo as any)?.parameters?.height ? (groundGeo as any).parameters.height / 2 : 30
+      const margin = 3.5
+      const backZ = -groundHalfZ + margin
+      const leftX = -groundHalfX + margin
+      const rightX = groundHalfX - margin
+
+      // Helper shadow blob
+      const blobTex = shadowTexture
+      function makeBlob(w: number, d: number, opacity = 0.45) {
+        const m = new THREE.Mesh(
+          new THREE.PlaneGeometry(w, d),
+          new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, opacity })
+        )
+        m.rotation.x = -Math.PI / 2
+        m.position.y = 0.01
+        m.renderOrder = -1
+        return m
+      }
+
+      // Red Shed
+      function buildShed(): THREE.Group {
+        const shed = new THREE.Group()
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0xd63b3b as any, roughness: 0.85, metalness: 0.02 })
+        const trimMat = new THREE.MeshStandardMaterial({ color: 0xffffff as any, roughness: 0.7, metalness: 0.02 })
+        const roofMat = new THREE.MeshStandardMaterial({ color: 0x8e1f1f as any, roughness: 0.9, metalness: 0.05 })
+
+        const body = new THREE.Mesh(new THREE.BoxGeometry(4.0, 2.6, 3.2), wallMat)
+        body.position.y = 1.3
+        body.castShadow = true
+        body.receiveShadow = true
+        shed.add(body)
+
+        // Roof as a cute 4-sided pyramid slightly larger than body
+        const roof = new THREE.Mesh(new THREE.ConeGeometry(2.6, 1.0, 4), roofMat)
+        roof.position.y = 2.6 + 0.5
+        roof.rotation.y = Math.PI / 4
+        roof.castShadow = true
+        roof.receiveShadow = true
+        shed.add(roof)
+
+        // Door
+        const door = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.8, 0.12), trimMat)
+        door.position.set(0, 0.9, 1.62)
+        door.castShadow = true
+        door.receiveShadow = true
+        shed.add(door)
+
+        // Small window
+        const windowPanel = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.6, 0.08), trimMat)
+        windowPanel.position.set(-1.2, 1.5, 0)
+        windowPanel.castShadow = true
+        windowPanel.receiveShadow = true
+        shed.add(windowPanel)
+
+        // Subtle ground shadow blob
+        shed.add(makeBlob(4.6, 3.8, 0.38))
+
+        return shed
+      }
+
+      // Cute simple car
+      function buildCar(): THREE.Group {
+        const car = new THREE.Group()
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x6ecbff as any, roughness: 0.6, metalness: 0.2 })
+        const darkMat = new THREE.MeshStandardMaterial({ color: 0x222222 as any, roughness: 0.9, metalness: 0.1 })
+        const glassMat = new THREE.MeshStandardMaterial({ color: 0xcfe9ff as any, roughness: 0.1, metalness: 0.0, transparent: true, opacity: 0.8 })
+
+        const chassis = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.8, 1.5), bodyMat)
+        chassis.position.y = 0.6
+        chassis.castShadow = true
+        chassis.receiveShadow = true
+        car.add(chassis)
+
+        const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.7, 1.3), glassMat)
+        cabin.position.set(0.0, 1.15, 0.0)
+        cabin.castShadow = true
+        cabin.receiveShadow = true
+        car.add(cabin)
+
+        // Wheels
+        const wheelGeo = new THREE.TorusGeometry(0.32, 0.12, 10, 16)
+        const wheels: THREE.Mesh[] = []
+        const wheelPositions = [
+          [-1.1, 0.34, 0.7], [1.1, 0.34, 0.7],
+          [-1.1, 0.34, -0.7], [1.1, 0.34, -0.7],
+        ]
+        for (const [x, y, z] of wheelPositions) {
+          const w = new THREE.Mesh(wheelGeo, darkMat)
+          w.rotation.x = Math.PI / 2
+          w.position.set(x as number, y as number, z as number)
+          w.castShadow = true
+          w.receiveShadow = true
+          wheels.push(w)
+          car.add(w)
+        }
+
+        // Headlights
+        const lightMat = new THREE.MeshStandardMaterial({ color: 0xfff6c2 as any, emissive: 0xfff2a8 as any, emissiveIntensity: 0.8, roughness: 0.4, metalness: 0.0 })
+        const hl1 = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 10), lightMat)
+        const hl2 = hl1.clone()
+        hl1.position.set(0.45, 0.78, 0.8)
+        hl2.position.set(-0.45, 0.78, 0.8)
+        car.add(hl1, hl2)
+
+        // Shadow blob
+        car.add(makeBlob(3.4, 1.9, 0.34))
+
+        return car
+      }
+
+      // Place shed back-left, car back-right (opposite the road toward +Z)
+      const shed = buildShed()
+      shed.position.set(leftX, 0, backZ)
+      shed.rotation.y = Math.PI / 12
+      shed.scale.set(1.6, 1.6, 1.6)
+      shed.traverse((o: any) => { if ((o as any).isMesh) { o.castShadow = true; o.receiveShadow = true } })
+      decorGroup.add(shed)
+
+      // Small gravel pad for the car
+      const adjustedX = THREE.MathUtils.lerp(rightX, 0, 0.25) // bring 25% closer to center on X
+      const adjustedZ = backZ * 0.75 // bring 25% closer to center on Z
+      const carGravelTex = createGravelTexture(renderer)
+      carGravelTex.repeat.set(3, 1.6)
+      const carGravelMat = new THREE.MeshStandardMaterial({ map: carGravelTex, roughness: 1, metalness: 0 })
+      const carPad = new THREE.Mesh(new THREE.PlaneGeometry(5.8, 3.2), carGravelMat)
+      carPad.rotation.x = -Math.PI / 2
+      carPad.position.set(adjustedX, 0.006, adjustedZ)
+      carPad.receiveShadow = true
+      decorGroup.add(carPad)
+
+      const car = buildCar()
+      car.position.set(adjustedX, 0, adjustedZ)
+      car.rotation.y = -Math.PI / 6
+      // Tilt the car for a playful look
+      car.rotation.z = 0.12
+      car.rotation.x = -0.05
+      car.scale.set(1.6, 1.6, 1.6)
+      car.traverse((o: any) => { if ((o as any).isMesh) { o.castShadow = true; o.receiveShadow = true } })
+      decorGroup.add(car)
+
+      scene.add(decorGroup)
+    }
+    addCornerDecor()
 
     function createPot(potIndex: number): THREE.Group {
       const group = new THREE.Group()
@@ -451,7 +605,12 @@ export function Garden3D({ onEditSign }: { onEditSign?: (id: string) => void }) 
       }
     }
 
-    function makeFlower(color: number, height: number, petal: number) {
+    function makeFlower(
+      color: number,
+      height: number,
+      petal: number,
+      matOpts?: { roughness?: number; metalness?: number; emissive?: number; emissiveIntensity?: number }
+    ) {
       const group = new THREE.Group()
 
       const stemGeo = new THREE.CylinderGeometry(0.06, 0.06, height, 12)
@@ -469,7 +628,13 @@ export function Garden3D({ onEditSign }: { onEditSign?: (id: string) => void }) 
       group.add(center)
 
       const petalGeo = new THREE.SphereGeometry(0.16, 16, 16)
-      const petalMat = new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.08 })
+      const petalMat = new THREE.MeshStandardMaterial({
+        color,
+        roughness: matOpts?.roughness ?? 0.5,
+        metalness: matOpts?.metalness ?? 0.08,
+        emissive: matOpts?.emissive ?? 0x000000,
+        emissiveIntensity: matOpts?.emissiveIntensity ?? 0,
+      })
       const petals = new THREE.Group()
       const count = petal
       for (let i = 0; i < count; i++) {
@@ -495,12 +660,22 @@ export function Garden3D({ onEditSign }: { onEditSign?: (id: string) => void }) 
         if (!holder) continue
         const type = it.type
         let group: THREE.Group
-        if (type === 'flower1' || type === 'flower2' || type === 'flower3') {
-          group = type === 'flower1'
-            ? makeFlower(0xf472b6, 1.2, 8)
-            : type === 'flower2'
-            ? makeFlower(0xfacc15, 1.0, 6)
-            : makeFlower(0xf43f5e, 1.4, 10)
+        if (
+          type === 'flower1' || type === 'flower2' || type === 'flower3' ||
+          type === 'tulip' || type === 'rose' || type === 'sunflower' || type === 'lavender' ||
+          type === 'silver' || type === 'golden' || type === 'diamond'
+        ) {
+          group =
+            type === 'flower1' ? makeFlower(0xf472b6, 1.2, 8)
+            : type === 'flower2' ? makeFlower(0xfacc15, 1.0, 6)
+            : type === 'flower3' ? makeFlower(0xf43f5e, 1.4, 10)
+            : type === 'tulip' ? makeFlower(0xff6f9f, 1.1, 5)
+            : type === 'rose' ? makeFlower(0xd90429, 1.3, 12)
+            : type === 'sunflower' ? makeFlower(0xf59e0b, 1.6, 12)
+            : type === 'lavender' ? makeFlower(0xa78bfa, 1.5, 16)
+            : type === 'silver' ? makeFlower(0xc0c0c0, 1.2, 10, { metalness: 0.85, roughness: 0.25 })
+            : type === 'golden' ? makeFlower(0xffd700, 1.3, 10, { metalness: 1.0, roughness: 0.35, emissive: 0xffc400, emissiveIntensity: 0.06 })
+            : /* diamond */ makeFlower(0x9bd4ff, 1.3, 8, { metalness: 0.9, roughness: 0.15, emissive: 0xbde0fe, emissiveIntensity: 0.1 })
           group.rotation.y = Math.random() * Math.PI
         } else if (type === 'imageSign') {
           // imageSign: small signpost with a framed plane showing image
@@ -641,12 +816,17 @@ export function Garden3D({ onEditSign }: { onEditSign?: (id: string) => void }) 
               try { (draggedOriginal as any).visible = false } catch {}
             }
           }
-          const ghost = selectedType === 'flower1'
-            ? makeFlower(0xf472b6, 1.2, 8)
-            : selectedType === 'flower2'
-            ? makeFlower(0xfacc15, 1.0, 6)
-            : selectedType === 'flower3'
-            ? makeFlower(0xf43f5e, 1.4, 10)
+          const ghost =
+            selectedType === 'flower1' ? makeFlower(0xf472b6, 1.2, 8)
+            : selectedType === 'flower2' ? makeFlower(0xfacc15, 1.0, 6)
+            : selectedType === 'flower3' ? makeFlower(0xf43f5e, 1.4, 10)
+            : selectedType === 'tulip' ? makeFlower(0xff6f9f, 1.1, 5)
+            : selectedType === 'rose' ? makeFlower(0xd90429, 1.3, 12)
+            : selectedType === 'sunflower' ? makeFlower(0xf59e0b, 1.6, 12)
+            : selectedType === 'lavender' ? makeFlower(0xa78bfa, 1.5, 16)
+            : selectedType === 'silver' ? makeFlower(0xc0c0c0, 1.2, 10, { metalness: 0.85, roughness: 0.25 })
+            : selectedType === 'golden' ? makeFlower(0xffd700, 1.3, 10, { metalness: 1.0, roughness: 0.35, emissive: 0xffc400, emissiveIntensity: 0.06 })
+            : selectedType === 'diamond' ? makeFlower(0x9bd4ff, 1.3, 8, { metalness: 0.9, roughness: 0.15, emissive: 0xbde0fe, emissiveIntensity: 0.1 })
             : (() => {
                 const g = new THREE.Group()
                 const tall = selectedType === 'tallImage'
@@ -771,6 +951,7 @@ export function Garden3D({ onEditSign }: { onEditSign?: (id: string) => void }) 
         {
           onSuccess: () => {
             ;(utils as any).flowers?.getFlowers?.invalidate?.()
+            try { audio.playSnap() } catch {}
             clearSelection(false)
           },
           onError: () => {

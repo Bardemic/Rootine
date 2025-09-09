@@ -17,6 +17,14 @@ export const flowersRouter = router({
       flower3: 20,
       imageSign: 25,
       tallImage: 40,
+      // New flowers
+      tulip: 12,
+      rose: 18,
+      sunflower: 22,
+      lavender: 30,
+      silver: 50,
+      golden: 80,
+      diamond: 120,
     };
     const price = PRICE_MAP[input.flowerId];
     if (price == null) {

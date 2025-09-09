@@ -17,7 +17,7 @@ export type Goal = {
 
 export type GardenItem = {
   id: string
-  type: 'flower1' | 'flower2' | 'flower3' | 'imageSign' | 'tallImage'
+  type: 'flower1' | 'flower2' | 'flower3' | 'tulip' | 'rose' | 'sunflower' | 'lavender' | 'silver' | 'golden' | 'diamond' | 'imageSign' | 'tallImage'
   slot: number
   imageUrl?: string
 }
