@@ -24,7 +24,7 @@ function InnerApp() {
     trpc.createClient({
       links: [
         httpBatchLink({
-          url: `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:7001'}/trpc`,
+          url: `${import.meta.env.VITE_BACKEND_URL || 'https://api-rootine.bardemic.com'}/trpc`,
           fetch(url, options) {
             return fetch(url, { ...options, credentials: 'include' })
           },
