@@ -1,0 +1,17 @@
+node_modules
+*/node_modules
+.git
+.gitignore
+npm-debug.log
+.DS_Store
+.env
+.env.*
+dist
+build
+*/dist
+*/build
+coverage
+**/*.log
+**/*.sqlite
+**/*.db
+
